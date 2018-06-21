@@ -50,7 +50,14 @@ class ParaRadix{
 		sumCount = new int[numDigit];
 		sync();
 		sumCount = new int[numDigit];
-		sync();//TODO: REPLACE WITH A join
+
+		for(Thread t : threads){
+			try{
+				t.join();
+			} catch (InterruptedException IE) {
+				IE.printStackTrace();
+			}
+		}
 		return b;
 	}//END sort
 	/**
@@ -60,8 +67,7 @@ class ParaRadix{
 	* @param digit The current digit
 	* @see synchronized
 	**/
-	synchronized void pushMax(int value, int digit){
-		if(digit==1){
+	synchronized void pushMax(int value){
 			if(value > max){
 				max = value;
 			}
@@ -73,11 +79,11 @@ class ParaRadix{
 			bit[1] = numBit-bit[0];
 
 			//number of possible digit values
-			numDigit = 1<<bit[0];
-		} else {//TODO: MOVE THIS OUTSIDE OF pushMax
-			numDigit = 1<<bit[1];
-		}
+			updateDigits(0);
 	}//END pushMax
+	synchronized void updateDigits(int i){
+		numDigit = 1<<bit[i];
+	}
 	/**
 	* A barrier for all threads. Including the main thread.
 	**/
@@ -126,11 +132,12 @@ class ParaRadix{
 		* @see Thread.run()
 		**/
 		public void run(){
-			radixSort(1, 0);
+			pushMax(findMax());//TODO: REMOVE PASSING OF CURRENT DIGIT NUMBER
+			radixSort(0);
 			swapAB();//TODO: FIND A WORKAROUND
 			sync1();
-			radixSort(2, bit[0]);
-			sync();
+			updateDigits(1);
+			radixSort(bit[0]);
 		}//END run
 		/**
 		* Abstraction barrier
@@ -138,12 +145,9 @@ class ParaRadix{
 		* @param digit The current digit on which to sort
 		* @param shift The the current amount of shift needed to sort on the specified digit
 		**/
-		void radixSort(int digit, int shift){
+		void radixSort(int shift){
 			this.shift = shift;
-			max = 0;
-			if(digit == 1)
-				max = findMax();
-			pushMax(max, digit);//TODO: REMOVE PASSING OF CURRENT DIGIT NUMBER
+
 			sync();
 			allCount[threadNr] = countFreq();
 			sync1();
